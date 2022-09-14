@@ -20,13 +20,14 @@ namespace TravelingSalesman
         private float yMax;
         private Random rnd = new Random();
 
-        int sizeOfPopulation = 25;
+        int sizeOfPopulation = 250;
         int chanceToMutate = 0;
-        int numberOfGenerations = 10000;
-        int weightValueEquationCurveExponent = 2;
+        int numberOfGenerations = 50000;
+        int weightValueEquationCurveExponent = 3;
 
-        List<int> reproductionProbabilities = new List<int>();
-        int reproductionProbabilitiesSum = 0;
+        List<int> reproductionWeights = new List<int>();
+        List<int> deathWeights = new List<int>();
+        int weightsSum = 0;
 
 
         public Form1(List<float[]> xyCoordinates)
@@ -42,59 +43,43 @@ namespace TravelingSalesman
 
         private void Form1_Paint(object sender, PaintEventArgs e)
         {
-            BeginGeneticAlgorithm(e, xyPoints, numberOfGenerations);
+            Graphics graphics = e.Graphics;
+
+            PopulationMember solution = BeginGeneticAlgorithm(xyPoints, numberOfGenerations);
+
+            DrawMap(graphics, solution);
+            Console.WriteLine("Distance: " + solution.TotalDistance);
+
         }
 
-        private void BeginGeneticAlgorithm(PaintEventArgs e, List<float[]> xyCoordinates, int numOfGenerations)
+        private PopulationMember BeginGeneticAlgorithm(List<float[]> xyCoordinates, int numOfGenerations)
         {
-            Graphics graphics = e.Graphics;
-            Brush brush = new SolidBrush(Color.Black);
-            Pen pen = new Pen(Color.Black);
-
             List<PopulationMember> population = new List<PopulationMember>(RandomInitialPopulation(xyCoordinates, sizeOfPopulation));
-            List<PopulationMember> sortedPopulation = population.OrderBy(x => x.TotalDistance).ToList();
+            population = population.OrderBy(x => x.TotalDistance).ToList();
 
-            GetReproductionProbabilitiesForPopulationSize(sortedPopulation);
-            AssignReproductionProbabilities(sortedPopulation);
+            GetReproductionProbabilitiesForPopulationSize(population);
+            AssignReproductionProbabilities(population);
 
             for (int i = 0; i < numOfGenerations; i++)
             {
-                sortedPopulation.AddRange(BreedingFunction(GetMate(sortedPopulation), GetMate(sortedPopulation), chanceToMutate));
-                sortedPopulation = sortedPopulation.OrderBy(x => x.TotalDistance).ToList();
+                population.AddRange(BreedingFunction(population.ElementAt(WeightedSelectionOfPopulationMember(population, reproductionWeights)), population.ElementAt(WeightedSelectionOfPopulationMember(population, reproductionWeights)), chanceToMutate));
+                population = population.OrderBy(x => x.TotalDistance).ToList();
 
-                GetReproductionProbabilitiesForPopulationSize(sortedPopulation);
-                AssignReproductionProbabilities(sortedPopulation);
+                GetReproductionProbabilitiesForPopulationSize(population);
+                AssignReproductionProbabilities(population);
 
-                sortedPopulation.RemoveAt(sortedPopulation.Count - 1);
-                sortedPopulation.RemoveAt(sortedPopulation.Count - 1);
+                population.RemoveAt(WeightedSelectionOfPopulationMember(population, deathWeights));
 
-                AssignReproductionProbabilities(sortedPopulation);
+                GetReproductionProbabilitiesForPopulationSize(population);
+                AssignReproductionProbabilities(population);
 
-                float totalPopulationPathDistance = 0;
-                for (int j = 0; j < sortedPopulation.Count; j++)
-                {
-                    totalPopulationPathDistance = totalPopulationPathDistance + sortedPopulation.ElementAt(j).TotalDistance;
-                }
+                population.RemoveAt(WeightedSelectionOfPopulationMember(population, deathWeights));
 
-                Console.WriteLine("Shortest Path: " + sortedPopulation.ElementAt(0).TotalDistance + " Generation: " + i);
-                //DrawMap(graphics, pen, brush, xyCoordinates, sortedPopulation);
+                GetReproductionProbabilitiesForPopulationSize(population);
+                AssignReproductionProbabilities(population);
+
             }
-            DrawMap(graphics, pen, brush, xyCoordinates, sortedPopulation);
-        }
-
-        private PopulationMember GetMate(List<PopulationMember> sortedPopulation)
-        {
-            int mateSelection = rnd.Next(reproductionProbabilitiesSum);
-            int matePosition = 0;
-            for (int i = 0; i < reproductionProbabilities.Count; i++)
-            {
-                matePosition = matePosition + reproductionProbabilities.ElementAt(i);
-                if (matePosition >= mateSelection)
-                {
-                    return sortedPopulation.ElementAt(i);
-                }
-            }
-            return sortedPopulation.ElementAt(0);
+            return population.ElementAt(0);
         }
 
         private List<PopulationMember> BreedingFunction(PopulationMember parentOne, PopulationMember parentTwo, int mutationChance)
@@ -184,22 +169,47 @@ namespace TravelingSalesman
             return shuffledXYCoordinatesArray;
         }
 
-        private void AssignReproductionProbabilities(List<PopulationMember> sortedPopulation)
+        private void AssignReproductionProbabilities(List<PopulationMember> population)
         {
-            for (int i = 0; i < sortedPopulation.Count; i++)
+            for (int i = 0; i < population.Count; i++)
             {
-                sortedPopulation.ElementAt(i).ReproductionProbability = reproductionProbabilities.ElementAt(i);
+                population.ElementAt(i).ReproductionWeight = reproductionWeights.ElementAt(i);
+                population.ElementAt(i).DeathWeight = deathWeights.ElementAt(i);
             }
         }
 
-        private void GetReproductionProbabilitiesForPopulationSize(List<PopulationMember> sortedPopulation)
+        private void GetReproductionProbabilitiesForPopulationSize(List<PopulationMember> population)
         {
-            for (int i = 0; i < sortedPopulation.Count; i++)
+            weightsSum = 0;
+            reproductionWeights.Clear();
+            deathWeights.Clear();
+            for (int i = 0; i < population.Count; i++)
             {
-                int weightValue = WeightValueEquation(sortedPopulation.Count, i, weightValueEquationCurveExponent);
-                reproductionProbabilitiesSum = reproductionProbabilitiesSum + weightValue;
-                reproductionProbabilities.Add(weightValue);
+                int weightValue = WeightValueEquation(population.Count, i, weightValueEquationCurveExponent);
+                weightsSum = weightsSum + weightValue;
+                reproductionWeights.Add(weightValue);
             }
+            List<int> inverseProbabilities = new List<int>(reproductionWeights);
+            inverseProbabilities.Reverse();
+            deathWeights.AddRange(inverseProbabilities);
+
+
+        }
+
+        private int WeightedSelectionOfPopulationMember(List<PopulationMember> population, List<int> populationWeights)
+        {
+            int position = 0;
+            int selection = rnd.Next(weightsSum);
+
+            for (int i = 0; i < population.Count; i++)
+            {
+                position = position + populationWeights.ElementAt(i);
+                if (position >= selection)
+                {
+                    return i;
+                }
+            }
+            return populationWeights.ElementAt(populationWeights.Max());
         }
 
         private int WeightValueEquation(int sortedPopulationCount, int positionInSortedPopulation, int curveIntensity)
@@ -211,30 +221,32 @@ namespace TravelingSalesman
                 * 100);
         }
 
-        private void DrawMap(Graphics graphics, Pen pen, Brush brush, List<float[]> xyCoordinates, List<PopulationMember> sortedPopulation)
+        private void DrawMap(Graphics graphics, PopulationMember solution)
         {
+            Brush brush = new SolidBrush(Color.Black);
+            Pen pen = new Pen(Color.Black);
             graphics.Clear(Color.White);
-            for (int a = 0; a < xyCoordinates.Count; a++)
+            for (int a = 0; a < solution.Path.Count; a++)
             {
-                graphics.FillEllipse(brush, XTranslate(xyPoints.ElementAt(a)[0]), YTranslate(xyPoints.ElementAt(a)[1]), 10, 10);
+                graphics.FillEllipse(brush, XTranslate(solution.Path.ElementAt(a)[0]), YTranslate(solution.Path.ElementAt(a)[1]), 10, 10);
             }
-            for (int j = 0; j < sortedPopulation.ElementAt(0).Path.Count; j++)
+            for (int j = 0; j < solution.Path.Count; j++)
             {
-                if (j == sortedPopulation.ElementAt(0).Path.Count - 1)
+                if (j == solution.Path.Count - 1)
                 {
                     graphics.DrawLine(pen,
-                        XTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(j)[0]) + 5,
-                        YTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(j)[1]) + 5,
-                        XTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(0)[0]) + 5,
-                        YTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(0)[1]) + 5);
+                        XTranslate(solution.Path.ElementAt(j)[0]) + 5,
+                        YTranslate(solution.Path.ElementAt(j)[1]) + 5,
+                        XTranslate(solution.Path.ElementAt(0)[0]) + 5,
+                        YTranslate(solution.Path.ElementAt(0)[1]) + 5);
                 }
                 else
                 {
                     graphics.DrawLine(pen,
-                        XTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(j)[0]) + 5,
-                        YTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(j)[1]) + 5,
-                        XTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(j + 1)[0]) + 5,
-                        YTranslate(sortedPopulation.ElementAt(0).Path.ElementAt(j + 1)[1]) + 5);
+                        XTranslate(solution.Path.ElementAt(j)[0]) + 5,
+                        YTranslate(solution.Path.ElementAt(j)[1]) + 5,
+                        XTranslate(solution.Path.ElementAt(j + 1)[0]) + 5,
+                        YTranslate(solution.Path.ElementAt(j + 1)[1]) + 5);
                 }
             }
         }
@@ -303,7 +315,7 @@ namespace TravelingSalesman
             }
             return max;
         }
-    
+
         private float XTranslate(float xCoordinate)
         {
             float xRange = xMax - xMin;
@@ -313,6 +325,7 @@ namespace TravelingSalesman
 
             return this.Width * xRatio;
         }
+
         private float YTranslate(float yCoordinate)
         {
             float yRange = yMax - yMin;

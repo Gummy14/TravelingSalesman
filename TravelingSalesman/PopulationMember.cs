@@ -12,6 +12,8 @@ namespace TravelingSalesman
 
         public float TotalDistance { get; set; }
 
-        public float ReproductionProbability { get; set; }
+        public int ReproductionWeight { get; set; }
+
+        public int DeathWeight { get; set; }
     }
 }
