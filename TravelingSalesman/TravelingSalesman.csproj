@@ -55,6 +55,7 @@
     <Compile Include="PopulationMember.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TreeNode.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
@@ -89,6 +90,7 @@
     <Content Include="data\Data7.txt" />
     <Content Include="data\Data8.txt" />
     <Content Include="data\Data9.txt" />
+    <Content Include="data\output-onlineintegertools %281%29.txt" />
     <Content Include="data\StateCapitalCoordinates.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -20,14 +20,16 @@ namespace TravelingSalesman
         private float yMax;
         private Random rnd = new Random();
 
-        int sizeOfPopulation = 250;
+        int sizeOfPopulation = 100;
         int chanceToMutate = 0;
         int numberOfGenerations = 50000;
-        int weightValueEquationCurveExponent = 3;
+        int weightValueEquationCurveExponent = 2;
 
         List<int> reproductionWeights = new List<int>();
         List<int> deathWeights = new List<int>();
         int weightsSum = 0;
+
+        TreeNode root = new TreeNode();
 
 
         public Form1(List<float[]> xyCoordinates)
@@ -45,11 +47,60 @@ namespace TravelingSalesman
         {
             Graphics graphics = e.Graphics;
 
-            PopulationMember solution = BeginGeneticAlgorithm(xyPoints, numberOfGenerations);
+            //PopulationMember solution = BeginGeneticAlgorithm(xyPoints, numberOfGenerations);
+            //DrawMap(graphics, solution);
+            //Console.WriteLine("Distance: " + solution.TotalDistance);
 
-            DrawMap(graphics, solution);
-            Console.WriteLine("Distance: " + solution.TotalDistance);
+            List<float[]> solution = BackTrack(xyPoints);
+            Console.WriteLine("Initial Distance: " + GetPathDistance(xyPoints));
+            Console.WriteLine("Distance: " + GetPathDistance(solution));
 
+        }
+
+        private List<float[]> BackTrack(List<float[]> xyPoints)
+        {
+            float bestPathDistance = GetPathDistance(xyPoints);
+            List<TreeNode> allValues = new List<TreeNode>();
+            for (int i = 0; i < xyPoints.Count; i++)
+            {
+                TreeNode node = new TreeNode();
+                node.SelfIndex = i;
+                node.Self = xyPoints.ElementAt(i);
+                allValues.Add(node);
+            }
+
+            GetTreeChildNodes(root, allValues);
+            
+            return xyPoints;
+        }
+
+        private void GetTreeChildNodes(TreeNode node, List<TreeNode> searchArea)
+        {
+            if (searchArea.Count != 0)
+            {
+                List<TreeNode> children = new List<TreeNode>();
+                for (int i = 0; i < searchArea.Count; i++)
+                {
+                    TreeNode childNode = new TreeNode();
+                    childNode.Parent = node.Self;
+                    childNode.ParentIndex = node.SelfIndex;
+                    childNode.Self = searchArea.ElementAt(i).Self;
+                    childNode.SelfIndex = searchArea.ElementAt(i).SelfIndex;
+                    children.Add(childNode);
+                }
+                node.Children.AddRange(children);
+
+                for (int i = 0; i < node.Children.Count; i++)
+                {
+                    List<TreeNode> newSearchArea = new List<TreeNode>(searchArea);
+                    TreeNode match = newSearchArea.FirstOrDefault(x => x.Self.SequenceEqual(children.ElementAt(i).Self));
+                    newSearchArea.Remove(match);
+
+                    GetTreeChildNodes(node.Children.ElementAt(i), newSearchArea);
+
+                }
+
+            }
         }
 
         private PopulationMember BeginGeneticAlgorithm(List<float[]> xyCoordinates, int numOfGenerations)
@@ -78,6 +129,7 @@ namespace TravelingSalesman
                 GetReproductionProbabilitiesForPopulationSize(population);
                 AssignReproductionProbabilities(population);
 
+                //Console.WriteLine("Shortest Path: " + population.ElementAt(0).TotalDistance + " Generation #: " + i);
             }
             return population.ElementAt(0);
         }
@@ -323,7 +375,7 @@ namespace TravelingSalesman
 
             float xRatio = xCoordinateDifferenceFromMin / xRange;
 
-            return this.Width * xRatio;
+            return (this.Width - this.Width / 10) * xRatio;
         }
 
         private float YTranslate(float yCoordinate)
@@ -333,7 +385,7 @@ namespace TravelingSalesman
 
             float yRatio = yCoordinateDifferenceFromMax / yRange;
 
-            return this.Height * yRatio;
+            return (this.Height - this.Height / 10) * yRatio;
         }
     }
 }

@@ -15,7 +15,7 @@ namespace TravelingSalesman
         [STAThread]
         static void Main()
         {
-            string[] coordinates = ReadFile(@"C:\Users\alex_\source\repos\TravelingSalesman\TravelingSalesman\data\StateCapitalCoordinates.txt");
+            string[] coordinates = ReadFile(@"C:\Users\alex_\source\repos\TravelingSalesman\TravelingSalesman\data\Data10.txt");
             List<float[]> xyCoordinates = GetCoordinates(coordinates);
 
             Application.EnableVisualStyles();
